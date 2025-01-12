@@ -1,16 +1,16 @@
+// src/components/PieceForm.jsx
 import React from 'react';
 import { Music, Calendar, Clock, Brain, Award } from 'lucide-react';
 
 export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
     return (
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-lg">
             <div>
                 <label className="flex items-center text-indigo-900 mb-2">
                     <Music className="w-5 h-5 mr-2" />
                     Piece Name
                 </label>
                 <input
-                    type="text"
                     name="pieceName"
                     value={formData.pieceName}
                     onChange={handleInputChange}
@@ -30,6 +30,7 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
                     value={formData.duration}
                     onChange={handleInputChange}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    min="1"
                     required
                 />
             </div>
@@ -37,18 +38,20 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
             <div>
                 <label className="flex items-center text-indigo-900 mb-2">
                     <Brain className="w-5 h-5 mr-2" />
-                    Complexity (1-5)
+                    Complexity Level
                 </label>
-                <input
-                    type="range"
+                <select
                     name="complexity"
-                    min="1"
-                    max="5"
                     value={formData.complexity}
                     onChange={handleInputChange}
-                    className="w-full"
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     required
-                />
+                >
+                    <option value="1">Beginner</option>
+                    <option value="2">Intermediate</option>
+                    <option value="3">Advanced</option>
+                    <option value="4">Professional</option>
+                </select>
             </div>
 
             <div>
@@ -62,6 +65,7 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
                     value={formData.priorPractice}
                     onChange={handleInputChange}
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    min="0"
                     required
                 />
             </div>
@@ -83,7 +87,7 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
 
             <button
                 type="submit"
-                className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+                className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
             >
                 Generate Practice Plan
             </button>

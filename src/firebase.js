@@ -1,14 +1,25 @@
+// src/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';  // Add this
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+
+console.log('Starting Firebase initialization...');
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBq0Hs5ToVxiTbhOmXHfaZvgcqQVarDKMQ",
-    authDomain: "memorizer-dc718.firebaseapp.com",
-    projectId: "memorizer-dc718",
-    storageBucket: "memorizer-dc718.firebasestorage.app",
-    messagingSenderId: "232463494683",
-    appId: "1:232463494683:web:95767d2d28f3c7fb1392be"
-};
+    apiKey: "AIzaSyAUtgK2UgiFbF5q77tuJY7IqfLPyp5y_sw",
+    authDomain: "webdevaviv.firebaseapp.com",
+    projectId: "webdevaviv",
+    storageBucket: "webdevaviv.firebasestorage.app",
+    messagingSenderId: "903273183409",
+    appId: "1:903273183409:web:54813b0fbcfa9736f70a90",
+    measurementId: "G-TZYW5555JF"
+  };
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);  // Add this
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+console.log('Firebase initialized successfully');
+
+export { auth, db };
+export default app;

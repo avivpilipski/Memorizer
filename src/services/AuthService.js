@@ -1,20 +1,47 @@
-import { auth } from '../firebase';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+// src/services/AuthService.js
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword 
+} from 'firebase/auth';
 
 export class AuthService {
     constructor() {
-      this.auth = auth;
-      this.googleProvider = new GoogleAuthProvider();
+        this.auth = getAuth();
+        this.provider = new GoogleAuthProvider();
     }
 
     async signInWithGoogle() {
         try {
-          return await signInWithPopup(this.auth, this.googleProvider);
+            const result = await signInWithPopup(this.auth, this.provider);
+            return result.user;
         } catch (error) {
-          console.error('Error signing in with Google:', error);
-          throw error;
+            console.error("Auth error:", error);
+            throw error;
         }
-      }
+    }
+
+    async signInWithEmail(email, password) {
+        try {
+            const result = await signInWithEmailAndPassword(this.auth, email, password);
+            return result.user;
+        } catch (error) {
+            console.error("Email sign in error:", error);
+            throw error;
+        }
+    }
+
+    async registerWithEmail(email, password) {
+        try {
+            const result = await createUserWithEmailAndPassword(this.auth, email, password);
+            return result.user;
+        } catch (error) {
+            console.error("Registration error:", error);
+            throw error;
+        }
+    }
 
     async signOut() {
         try {
