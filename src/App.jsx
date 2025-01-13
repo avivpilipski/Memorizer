@@ -1,230 +1,152 @@
-// src/components/MemorizerApp.jsx
+// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { PieceForm } from './PieceForm';
-import { PracticePlan } from './PracticePlan';
-import { PlanHistory } from './PlanHistory';
-import { Notification } from './Notification';
-import { DatabaseService } from '../services/DatabaseService';
-import { PlanGeneratorService } from '../services/PlanGeneratorService';
-import { auth } from '../firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { MemorizerApp } from './components/MemorizerApp';
+import { UsernameSetup } from './components/UsernameSetup';
+import { DatabaseService } from './services/DatabaseService';
+import { auth } from './firebase';
 
-export const MemorizerApp = ({ user }) => {
-  const [formData, setFormData] = useState({
-    pieceName: '',
-    duration: '',
-    complexity: '2',
-    priorPractice: '',
-    performanceDate: ''
-  });
-  const [plan, setPlan] = useState(null);
-  const [savedPlans, setSavedPlans] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [editingPlan, setEditingPlan] = useState(null);
+function App() {
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [settingUsername, setSettingUsername] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const dbService = new DatabaseService();
-  const planGenerator = new PlanGeneratorService();
 
   useEffect(() => {
-    fetchSavedPlans();
-  }, [user.uid]);
-
-  const fetchSavedPlans = async () => {
-    try {
-      const plans = await dbService.getUserPlans(user.uid);
-      setSavedPlans(plans.sort((a, b) => b.createdAt - a.createdAt));
-    } catch (error) {
-      showNotification(error.message, 'error');
-    }
-  };
-
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Validate performance date
-      const performanceDate = new Date(formData.performanceDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (performanceDate < today) {
-        showNotification('Performance date cannot be in the past', 'error');
+    console.log('Setting up auth listener');
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      console.log('Auth state changed:', user?.uid);
+      
+      // Handle sign out
+      if (!user) {
+        setIsTransitioning(true);
+        // Add a small delay for smooth transition
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setUser(null);
+        setUserProfile(null);
+        setIsTransitioning(false);
         setLoading(false);
         return;
       }
 
-      const generatedPlan = planGenerator.calculatePlan({
-        duration: parseInt(formData.duration),
-        complexity: parseInt(formData.complexity),
-        priorPractice: parseInt(formData.priorPractice),
-        performanceDate: formData.performanceDate
-      });
-
-      // Start transition
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setPlan(generatedPlan);
-        setIsTransitioning(false);
-      }, 300);
-
-      if (editingPlan) {
-        await dbService.updatePracticePlan(editingPlan.id, formData, generatedPlan);
-        showNotification('Plan updated successfully!');
-      } else {
-        await dbService.savePracticePlan(user.uid, formData, generatedPlan);
-        showNotification('Plan saved successfully!');
-      }
-
-      fetchSavedPlans();
-    } catch (error) {
-      showNotification(error.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleNewPiece = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setPlan(null);
-      setEditingPlan(null);
-      setFormData({
-        pieceName: '',
-        duration: '',
-        complexity: '2',
-        priorPractice: '',
-        performanceDate: ''
-      });
-      setIsTransitioning(false);
-    }, 300);
-  };
-
-  const handleSelectPlan = (plan) => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setEditingPlan(plan);
-      setFormData(plan.pieceData);
-      setPlan(plan.plan);
-      setIsTransitioning(false);
-    }, 300);
-  };
-
-  const handleDeletePlan = async (planId) => {
-    if (window.confirm('Are you sure you want to delete this plan?')) {
+      // Handle sign in
+      setUser(user);
       try {
-        await dbService.deletePracticePlan(planId);
-        showNotification('Plan deleted successfully!');
-        fetchSavedPlans();
+        console.log('Fetching user profile for:', user.uid);
+        const profile = await dbService.getUserProfile(user.uid);
+        console.log('Retrieved profile:', profile);
+        setUserProfile(profile);
+        setSettingUsername(!profile);
       } catch (error) {
-        showNotification(error.message, 'error');
+        console.error('Error fetching user profile:', error);
+        setError(`Failed to load user profile: ${error.message}`);
+      } finally {
+        setLoading(false);
       }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleUsernameSubmit = async (username) => {
+    setSettingUsername(true);
+    try {
+      const isAvailable = await dbService.checkUsernameAvailability(username);
+      
+      if (!isAvailable) {
+        throw new Error('Username is already taken');
+      }
+
+      await dbService.setUserProfile(user.uid, username);
+      const profile = await dbService.getUserProfile(user.uid);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Username setup error:', error);
+      throw error;
+    } finally {
+      setSettingUsername(false);
     }
   };
 
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-  };
-
-  const handleSignOut = async () => {
+  const handleSignIn = async () => {
     try {
-      await auth.signOut();
-      showNotification('Signed out successfully!');
+      console.log('Starting Google sign-in...');
+      const provider = new GoogleAuthProvider();
+      console.log('Provider created');
+      const result = await signInWithPopup(auth, provider);
+      console.log('Sign-in successful:', result.user.email);
     } catch (error) {
-      showNotification('Error signing out. Please try again.', 'error');
+      console.error('Detailed sign-in error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      setError(`Sign-in failed: ${error.message}`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl mb-8 p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold text-indigo-900 mb-2">Memorizer</h1>
-              <p className="text-indigo-600">Welcome, {user.email}</p>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="px-6 py-3 bg-white text-indigo-600 rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 border border-indigo-100"
-            >
-              Sign Out
-            </button>
+    <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+            <p className="text-indigo-600">Loading...</p>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="flex flex-col h-full">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-indigo-900">
-                {editingPlan ? 'Edit Practice Plan' : 'Create New Practice Plan'}
-              </h2>
-            </div>
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl flex-1">
-              <PieceForm
-                formData={formData}
-                handleInputChange={handleInputChange}
-                handleSubmit={handleSubmit}
-                loading={loading}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col h-full">
-            <div 
-              className={`transition-opacity duration-300 ${
-                isTransitioning ? 'opacity-0' : 'opacity-100'
-              }`}
-            >
-              {plan ? (
-                <div className="flex flex-col h-full">
-                  <div className="mb-6 flex justify-between items-center">
-                    <h2 className="text-2xl font-semibold text-indigo-900">Your Practice Plan</h2>
-                    <button
-                      onClick={handleNewPiece}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                      New Piece
-                    </button>
-                  </div>
-                  <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl flex-1">
-                    <PracticePlan plan={plan} />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col h-full">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-semibold text-indigo-900">Practice Plan History</h2>
-                  </div>
-                  <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl flex-1">
-                    <PlanHistory
-                      plans={savedPlans}
-                      onSelectPlan={handleSelectPlan}
-                      onDeletePlan={handleDeletePlan}
-                    />
-                  </div>
-                </div>
-              )}
+      ) : error ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-red-600 text-xl font-semibold mb-4">Error</h2>
+            <p className="text-gray-800 mb-4">{error}</p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setError(null)}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => auth.signOut()}
+                className="flex-1 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
-
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
-          />
-        )}
-      </div>
+      ) : !user ? (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="w-full max-w-md">
+            <h1 className="text-3xl font-bold text-indigo-900 mb-8 text-center">Welcome to Memorizer</h1>
+            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl p-6">
+              <button
+                onClick={handleSignIn}
+                className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
+                  />
+                </svg>
+                Sign in with Google
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : !userProfile ? (
+        <UsernameSetup
+          onUsernameSubmit={handleUsernameSubmit}
+          loading={settingUsername}
+        />
+      ) : (
+        <MemorizerApp user={user} username={userProfile.displayUsername} />
+      )}
     </div>
   );
-};
+}
+
+export default App;

@@ -1,38 +1,32 @@
-// src/components/UsernameSetup.jsx
 import React, { useState } from 'react';
 import { Music } from 'lucide-react';
-
-const generateRandomUsername = () => {
-  const adjectives = ['Melodic', 'Rhythmic', 'Harmonious', 'Musical', 'Virtuoso', 'Maestro', 'Sonata', 'Symphony'];
-  const nouns = ['Player', 'Artist', 'Musician', 'Performer', 'Creator', 'Composer', 'Star', 'Master'];
-  const randomNum = Math.floor(Math.random() * 1000);
-  
-  const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-  
-  return `${randomAdjective}${randomNoun}${randomNum}`;
-};
 
 export const UsernameSetup = ({ onUsernameSubmit, loading }) => {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
 
+  const generateRandomUsername = () => {
+    const adjectives = ['Melodic', 'Rhythmic', 'Musical'];
+    const nouns = ['Player', 'Artist', 'Musician'];
+    const number = Math.floor(Math.random() * 1000);
+    
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    
+    setUsername(`${adj}${noun}${number}`);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (username.length < 3) {
-      setError('Username must be at least 3 characters long');
+      setError('Username must be at least 3 characters');
       return;
     }
     onUsernameSubmit(username);
   };
 
-  const handleGenerateRandom = () => {
-    setUsername(generateRandomUsername());
-    setError('');
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl p-8">
           <div className="flex items-center justify-center mb-8">
@@ -50,7 +44,7 @@ export const UsernameSetup = ({ onUsernameSubmit, loading }) => {
                   setUsername(e.target.value);
                   setError('');
                 }}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500"
                 placeholder="Enter username"
               />
               {error && (
@@ -59,15 +53,14 @@ export const UsernameSetup = ({ onUsernameSubmit, loading }) => {
             </div>
             <button
               type="button"
-              onClick={handleGenerateRandom}
-              className="w-full px-4 py-2 text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 transition-colors"
+              onClick={generateRandomUsername}
+              className="w-full px-4 py-2 text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50"
             >
               Generate Random Username
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
             >
               {loading ? 'Setting up...' : 'Continue'}
             </button>
