@@ -2,9 +2,29 @@
 import React from 'react';
 import { Music, Calendar, Clock, Brain, Award } from 'lucide-react';
 
-export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
+export const PieceForm = ({ formData, handleInputChange, handleSubmit, loading }) => {
+    // Get today's date in YYYY-MM-DD format for the min attribute
+    const today = new Date().toISOString().split('T')[0];
+
+    // Custom validation before submitting
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+
+        // Check if performance date is in the past
+        const performanceDate = new Date(formData.performanceDate);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Reset time to start of day for fair comparison
+
+        if (performanceDate < now) {
+            alert('Performance date cannot be in the past. Please select a future date.');
+            return;
+        }
+
+        handleSubmit(e);
+    };
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-lg">
+        <form onSubmit={handleFormSubmit} className="space-y-6 p-6">
             <div>
                 <label className="flex items-center text-indigo-900 mb-2">
                     <Music className="w-5 h-5 mr-2" />
@@ -29,8 +49,8 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
                     name="duration"
                     value={formData.duration}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     min="1"
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     required
                 />
             </div>
@@ -64,8 +84,8 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
                     name="priorPractice"
                     value={formData.priorPractice}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     min="0"
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     required
                 />
             </div>
@@ -80,6 +100,7 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
                     name="performanceDate"
                     value={formData.performanceDate}
                     onChange={handleInputChange}
+                    min={today} // Set minimum date to today
                     className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                     required
                 />
@@ -87,9 +108,10 @@ export const PieceForm = ({ formData, handleInputChange, handleSubmit }) => {
 
             <button
                 type="submit"
-                className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+                disabled={loading}
+                className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors font-semibold disabled:opacity-50"
             >
-                Generate Practice Plan
+                {loading ? 'Generating Plan...' : 'Generate Practice Plan'}
             </button>
         </form>
     );

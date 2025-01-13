@@ -109,120 +109,146 @@ export const MemorizerApp = ({ user, username }) => {
     });
   };
 
- // Updated handleSignOut function with loading state and transitions
-const handleSignOut = async () => {
-    setIsSigningOut(true);
+  const handleSignOut = async () => {
     try {
-      // Clear all local state first
-      setPlan(null);
-      setSavedPlans([]);
-      setFormData({
-        pieceName: '',
-        duration: '',
-        complexity: '2',
-        priorPractice: '',
-        performanceDate: ''
-      });
-      setEditingPlan(null);
-  
-      // Add a small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Sign out from Firebase
-      await auth.signOut();
+      if (user.isGuest) {
+        // For guest users, just reset the states
+        setFormData({
+          pieceName: '',
+          duration: '',
+          complexity: '2',
+          priorPractice: '',
+          performanceDate: ''
+        });
+        setPlan(null);
+        setEditingPlan(null);
+        window.location.reload(); // This will reset the app to the login screen
+      } else {
+        // For regular users, sign out from Firebase
+        await auth.signOut();
+      }
       showNotification('Signed out successfully!');
     } catch (error) {
       console.error('Sign out error:', error);
       showNotification('Error signing out. Please try again.', 'error');
-      setIsSigningOut(false);
     }
   };
   const [isSigningOut, setIsSigningOut] = useState(false);
 
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl mb-8 p-6">
-          <div className="flex justify-between items-center">
-            <div className="transition-opacity duration-300 ease-in-out">
-              <h1 className="text-4xl font-bold text-indigo-900 mb-2">Memorizer</h1>
-              <p className="text-indigo-600">Welcome, {username}</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header - Now more mobile-friendly */}
+        <div className="bg-white/70 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-3xl sm:text-4xl font-bold text-indigo-900 mb-1 sm:mb-2">Memorizer</h1>
+              <p className="text-indigo-600 text-sm sm:text-base">Welcome, {username}</p>
             </div>
-            <div className="relative">
-              <button
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                className={`px-6 py-3 bg-white text-indigo-600 rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 border border-indigo-100 disabled:opacity-50 ${
-                  isSigningOut ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {isSigningOut ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                      <span>Signing out...</span>
-                    </>
-                  ) : (
-                    <span>Sign Out</span>
-                  )}
-                </div>
-              </button>
-            </div>
+            <button
+              onClick={handleSignOut}
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-white text-indigo-600 rounded-lg sm:rounded-xl 
+                       shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 
+                       border border-indigo-100 text-sm sm:text-base"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="flex flex-col h-full">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-indigo-900">
-                {editingPlan ? 'Edit Practice Plan' : 'Create New Practice Plan'}
-              </h2>
-            </div>
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl flex-1">
-              <PieceForm
-                formData={formData}
-                handleInputChange={handleInputChange}
-                handleSubmit={handleSubmit}
-                loading={loading}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col h-full">
-            <div className="mb-6 flex justify-between items-center">
-              <h2 className="text-2xl font-semibold text-indigo-900">
-                {plan ? 'Your Practice Plan' : 'Practice Plan History'}
-              </h2>
-              {plan && (
+  
+        {/* Main Content - Improved grid layout for mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+          {/* Practice Plans Overview - Now collapses nicely on mobile */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="bg-white/70 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-indigo-900">Your Practice Plans</h2>
                 <button
-                  onClick={handleNewPiece}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200"
+                  onClick={() => {
+                    setPlan(null);
+                    setEditingPlan(null);
+                    setFormData({
+                      pieceName: '',
+                      duration: '',
+                      complexity: '2',
+                      priorPractice: '',
+                      performanceDate: ''
+                    });
+                  }}
+                  className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
+                           transition-all duration-200 text-sm transform hover:scale-105"
                 >
-                  New Piece
+                  Create New Plan
                 </button>
-              )}
+              </div>
+  
+              <div className="space-y-3 sm:space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto 
+                            scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent">
+                {savedPlans.map((savedPlan, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 sm:p-4 rounded-lg border transition-all cursor-pointer
+                             hover:shadow-md active:scale-98 ${
+                      plan && plan === savedPlan.plan 
+                        ? 'bg-indigo-50 border-indigo-300 shadow-md' 
+                        : 'bg-white border-gray-200 hover:border-indigo-200'
+                    }`}
+                    onClick={() => {
+                      setEditingPlan(savedPlan);
+                      setFormData(savedPlan.pieceData);
+                      setPlan(savedPlan.plan);
+                    }}
+                  >
+                    <h3 className="font-medium text-indigo-900">{savedPlan.pieceData.pieceName}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                      Performance: {new Date(savedPlan.pieceData.performanceDate).toLocaleDateString()}
+                    </p>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-xs sm:text-sm text-gray-500">{savedPlan.pieceData.duration} minutes</span>
+                      <span className={`px-2 py-1 rounded-full text-xs sm:text-sm ${
+                        new Date(savedPlan.pieceData.performanceDate) < new Date() 
+                          ? 'bg-gray-100 text-gray-600' 
+                          : 'bg-green-100 text-green-600'
+                      } transition-colors duration-200`}>
+                        {new Date(savedPlan.pieceData.performanceDate) < new Date() ? 'Past' : 'Upcoming'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+  
+                {savedPlans.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 text-sm sm:text-base">No practice plans yet.</p>
+                    <p className="text-indigo-600 text-sm mt-2">Create your first one!</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl flex-1">
-              {plan ? (
-                <PracticePlan plan={plan} />
+          </div>
+  
+          {/* Main Content Area - Better mobile layout */}
+          <div className="lg:col-span-2 order-1 lg:order-2">
+            <div className="bg-white/70 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6
+                           transition-all duration-300 ease-in-out">
+              {!plan ? (
+                <div className="animate-fadeIn">
+                  <PieceForm
+                    formData={formData}
+                    handleInputChange={handleInputChange}
+                    handleSubmit={handleSubmit}
+                    loading={loading}
+                  />
+                </div>
               ) : (
-                <PlanHistory
-                  plans={savedPlans}
-                  onSelectPlan={handleSelectPlan}
-                  onDeletePlan={handleDeletePlan}
-                />
+                <div className="animate-fadeIn">
+                  <PracticePlan plan={plan} />
+                </div>
               )}
             </div>
           </div>
         </div>
-
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
-          />
-        )}
       </div>
     </div>
   );
