@@ -160,7 +160,7 @@ function App() {
               </svg>
               Sign in with Google
             </button>
-
+  
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300"></div>
@@ -169,7 +169,7 @@ function App() {
                 <span className="px-2 bg-white/70 text-gray-500">or</span>
               </div>
             </div>
-
+  
             <button
               onClick={handleGuestSignIn}
               className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white 
@@ -178,6 +178,10 @@ function App() {
             >
               Continue as Guest
             </button>
+          </div>
+  
+          <div className="text-center mt-8 animate-fadeIn opacity-75">
+            <p className="text-sm text-indigo-400">Created by Aviv Pilipski</p>
           </div>
         </div>
       </div>
