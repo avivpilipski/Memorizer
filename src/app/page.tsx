@@ -10,11 +10,39 @@ export default function Home() {
     learningTime: '',
     performanceDate: ''
   });
+  
+  const [practiceSchedule, setPracticeSchedule] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement API call to generate practice schedule
-    console.log('Form submitted:', formData);
+    setIsLoading(true);
+    setError('');
+    setPracticeSchedule([]);
+    
+    try {
+      const response = await fetch('/api/generate-schedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate practice schedule');
+      }
+      
+      setPracticeSchedule(data.schedule);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while generating the practice schedule');
+      console.error('Error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -119,6 +147,46 @@ export default function Home() {
             </button>
           </form>
         </div>
+        
+        {isLoading && (
+          <div className="max-w-md mx-auto mt-8 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <p className="text-center text-gray-700 dark:text-gray-300">Generating your practice schedule...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="max-w-md mx-auto mt-8 p-4 bg-red-50 dark:bg-red-900 rounded-lg shadow-lg">
+            <p className="text-center text-red-700 dark:text-red-300">{error}</p>
+          </div>
+        )}
+        
+        {practiceSchedule.length > 0 && (
+          <div className="max-w-4xl mx-auto mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Your Practice Schedule</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Focus</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration (min)</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {practiceSchedule.map((session, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">Day {session.day}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{new Date(session.date).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{session.focus}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{session.duration}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
