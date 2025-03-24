@@ -1,11 +1,11 @@
-export type PracticeSession = {
+export interface PracticeSession {
   day: number;
   date: string;
   focus: string;
   duration: number;
-};
+}
 
-export type CalendarEvent = {
+export interface CalendarEvent {
   title: string;
   start: string;
   end: string;
@@ -15,6 +15,6 @@ export type CalendarEvent = {
     duration: number;
     focus: string;
   };
-  backgroundColor: string;
-  borderColor: string;
-};
+  backgroundColor?: string;
+  borderColor?: string;
+}

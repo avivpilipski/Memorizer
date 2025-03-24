@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -8,9 +9,18 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { PracticeSession, CalendarEvent } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMusicNote, HiOutlineCalendar, HiOutlineClock, HiOutlineStar, 
-         HiArrowLeft, HiOutlineSparkles, HiOutlineLightBulb, HiOutlineClipboardCheck } from 'react-icons/hi';
+         HiArrowLeft, HiOutlineSparkles, HiOutlineLightBulb, HiOutlineClipboardCheck,
+         HiOutlineLogout, HiOutlineUser } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext';
+import { collection, addDoc, query, where, getDocs, DocumentData } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 export default function Home() {
+  const { user, isGuest, logout } = useAuth();
+  const router = useRouter();
+  const [savedPlans, setSavedPlans] = useState<DocumentData[]>([]);
+  const [showPlansDropdown, setShowPlansDropdown] = useState(false);
+
   // State management with useState hooks
   const [formData, setFormData] = useState({
     pieceName: '',
@@ -29,6 +39,123 @@ export default function Home() {
   const [notes, setNotes] = useState<{[key: string]: string}>({});
   const [aiTip, setAiTip] = useState<string>('');
   const [aiTipExpanded, setAiTipExpanded] = useState(false);
+
+  useEffect(() => {
+    // If not authenticated and not a guest, redirect to sign-in
+    if (!user && !isGuest) {
+      router.push('/signin');
+    } else if (user) {
+      // Fetch user's saved plans if authenticated
+      fetchUserPlans();
+    }
+  }, [user, isGuest, router]);
+
+  // Define fetchUserPlans outside useEffect to avoid the dependency warning
+  const fetchUserPlans = async () => {
+    if (!user) return;
+    
+    try {
+      const plansRef = collection(db, 'plans');
+      const q = query(plansRef, where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const plans: DocumentData[] = [];
+      querySnapshot.forEach((doc) => {
+        plans.push({ id: doc.id, ...doc.data() });
+      });
+      
+      setSavedPlans(plans);
+    } catch (error: unknown) {
+      console.error('Error fetching plans:', error);
+    }
+  };
+
+  useEffect(() => {
+    // If not authenticated and not a guest, redirect to sign-in
+    if (!user && !isGuest) {
+      router.push('/signin');
+    } else if (user) {
+      // Fetch user's saved plans if authenticated
+      fetchUserPlans();
+    }
+  }, [user, isGuest, router, fetchUserPlans]); // Add fetchUserPlans to the dependency array
+
+  const savePlan = async () => {
+    if (!user) {
+      // Prompt to sign in if guest tries to save
+      if (confirm('You need to sign in to save plans. Would you like to sign in now?')) {
+        router.push('/signin');
+      }
+      return;
+    }
+    
+    try {
+      await addDoc(collection(db, 'plans'), {
+        userId: user.uid,
+        pieceName: formData.pieceName,
+        complexity: formData.complexity,
+        duration: formData.duration,
+        learningTime: formData.learningTime,
+        performanceDate: formData.performanceDate,
+        practiceSchedule,
+        createdAt: new Date().toISOString()
+      });
+      
+      alert('Plan saved successfully!');
+      fetchUserPlans();
+    } catch (error: unknown) {
+      console.error('Error saving plan:', error);
+      alert('Failed to save plan. Please try again.');
+    }
+  };
+
+  const loadPlan = (plan: DocumentData) => {
+    setFormData({
+      pieceName: plan.pieceName,
+      complexity: plan.complexity,
+      duration: plan.duration,
+      learningTime: plan.learningTime,
+      performanceDate: plan.performanceDate
+    });
+    
+    setPracticeSchedule(plan.practiceSchedule);
+    
+    // Convert practice schedule to calendar events
+    const events = plan.practiceSchedule.map((session: PracticeSession): CalendarEvent => ({
+      title: `${session.focus} (${session.duration} min)`,
+      start: session.date,
+      end: session.date,
+      allDay: true,
+      extendedProps: {
+        day: session.day,
+        duration: session.duration,
+        focus: session.focus
+      },
+      backgroundColor: getColorForFocus(session.focus),
+      borderColor: getColorForFocus(session.focus)
+    }));
+    
+    setCalendarEvents(events);
+    setActiveView('calendar');
+    setShowPlansDropdown(false);
+  };
+
+  // Handle day click to show details
+  const handleDayClick = (info: { dateStr: string }) => {
+    const clickedDate = info.dateStr;
+    const session = practiceSchedule.find(s => s.date === clickedDate);
+    
+    if (session) {
+      setSelectedDay(session);
+      // Generate AI tip based on the focus
+      generateAiTip(session.focus);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    router.push('/signin');
+  };
 
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,8 +198,9 @@ export default function Home() {
       
       setCalendarEvents(events);
       setActiveView('calendar');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while generating the practice schedule');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while generating the practice schedule';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setIsLoading(false);
@@ -104,17 +232,18 @@ export default function Home() {
     setActiveView('form');
   };
 
+  // REMOVE THIS DUPLICATE FUNCTION
   // Handle day click to show details
-  const handleDayClick = (info: any) => {
-    const clickedDate = info.dateStr;
-    const session = practiceSchedule.find(s => s.date === clickedDate);
-    
-    if (session) {
-      setSelectedDay(session);
-      // Generate AI tip based on the focus
-      generateAiTip(session.focus);
-    }
-  };
+  // const handleDayClick = (info: any) => {
+  //   const clickedDate = info.dateStr;
+  //   const session = practiceSchedule.find(s => s.date === clickedDate);
+  //   
+  //   if (session) {
+  //     setSelectedDay(session);
+  //     // Generate AI tip based on the focus
+  //     generateAiTip(session.focus);
+  //   }
+  // };
   
   // Generate AI tip for practice
   const generateAiTip = (focus: string) => {
@@ -158,6 +287,69 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-indigo-50/30 to-white">
+      {/* Add Save Plan button in calendar view */}
+      {activeView === 'calendar' && practiceSchedule.length > 0 && (
+        <div className="mt-8 flex justify-center">
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={savePlan}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md"
+          >
+            Save This Practice Plan
+          </motion.button>
+        </div>
+      )}
+      <header className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <HiOutlineMusicNote className="text-indigo-600 text-2xl mr-2" />
+            <span className="font-bold text-xl text-gray-800">Memorizer</span>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {user && (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowPlansDropdown(!showPlansDropdown)}
+                  className="flex items-center text-sm text-gray-700 hover:text-indigo-600 transition-colors"
+                >
+                  <HiOutlineUser className="mr-1" /> 
+                  {user.displayName || user.email}
+                </button>
+                
+                {showPlansDropdown && savedPlans.length > 0 && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10">
+                    <div className="py-1">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500">Your Saved Plans</div>
+                      {savedPlans.map((plan) => (
+                        <button
+                          key={plan.id}
+                          onClick={() => loadPlan(plan)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50"
+                        >
+                          {plan.pieceName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {(user || isGuest) && (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center text-sm text-gray-700 hover:text-indigo-600 transition-colors"
+              >
+                <HiOutlineLogout className="mr-1" /> 
+                {isGuest ? 'Sign In' : 'Sign Out'}
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+      
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
@@ -559,3 +751,54 @@ export default function Home() {
     </div>
   );
 }
+
+// REMOVE THIS DUPLICATE FUNCTION
+// Fix the error type
+// const handleSubmit = async (e: React.FormEvent) => {
+//   e.preventDefault();
+//   setIsLoading(true);
+//   setError('');
+//   setPracticeSchedule([]);
+//   
+//   try {
+//     const response = await fetch('/api/generate-schedule', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify(formData),
+//     });
+//     
+//     const data = await response.json();
+//     
+//     if (!response.ok) {
+//       throw new Error(data.error || 'Failed to generate practice schedule');
+//     }
+//     
+//     setPracticeSchedule(data.schedule);
+//     
+//     // Convert practice schedule to calendar events
+//     const events = data.schedule.map((session: PracticeSession): CalendarEvent => ({
+//       title: `${session.focus} (${session.duration} min)`,
+//       start: session.date,
+//       end: session.date,
+//       allDay: true,
+//       extendedProps: {
+//         day: session.day,
+//         duration: session.duration,
+//         focus: session.focus
+//       },
+//       backgroundColor: getColorForFocus(session.focus),
+//       borderColor: getColorForFocus(session.focus)
+//     }));
+//     
+//     setCalendarEvents(events);
+//     setActiveView('calendar');
+//   } catch (err: unknown) {
+//     const errorMessage = err instanceof Error ? err.message : 'An error occurred while generating the practice schedule';
+//     setError(errorMessage);
+//     console.error('Error:', err);
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
