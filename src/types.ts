@@ -1,20 +1,20 @@
-export interface PracticeSession {
+export type PracticeSession = {
   day: number;
   date: string;
   focus: string;
-  duration: string | number;
-}
+  duration: number;
+};
 
-export interface CalendarEvent {
+export type CalendarEvent = {
   title: string;
-  start: Date | string;
-  end: Date | string;
+  start: string;
+  end: string;
   allDay: boolean;
   extendedProps: {
     day: number;
-    duration: string | number;
+    duration: number;
     focus: string;
   };
-  backgroundColor?: string;
-  borderColor?: string;
-}
+  backgroundColor: string;
+  borderColor: string;
+};
